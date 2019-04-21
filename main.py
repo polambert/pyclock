@@ -5,20 +5,29 @@ import calendar
 import time
 from math import pi, sin, cos, floor
 import sys
+import os
 import argparse
 
 # Parse Arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("-s", action="store", dest="size", default="20x10")
+parser.add_argument("-s", action="store", dest="size", default="full")
 parser.add_argument("-short", action="store_true", dest="shorten_time_text")
+parser.add_argument("-c", action="store", dest="colors", default="255:246:239")
+parser.add_argument("-notext", action="store_true", dest="notext")
 
 args = parser.parse_args()
 
 arg_size = args.size
 arg_short = args.shorten_time_text
+arg_color = args.colors.split(":")
 
-WIDTH = int(arg_size.split("x")[0])
-HEIGHT = int(arg_size.split("x")[1])
+if arg_size == "full":
+	rows, columns = os.popen("stty size", "r").read().split()
+	WIDTH = int(columns)
+	HEIGHT = int(rows)
+else:
+	WIDTH = int(arg_size.split("x")[0])
+	HEIGHT = int(arg_size.split("x")[1])
 
 class state:
 	second = 0
@@ -71,9 +80,27 @@ def raytrace(x0, y0, x1, y1, i):
 
 def clear():
 	global grid
+	global chars
+	global WIDTH
+	global HEIGHT
+
+	# Resize width and height if we're in a full window
+	if arg_size == "full":
+		rows, columns = os.popen("stty size", "r").read().split()
+		WIDTH = int(columns)
+		HEIGHT = int(rows)
+
+	grid = []
+	chars = []
+
 	for i in range(HEIGHT):
+		g = []
+		c = []
 		for j in range(WIDTH):
-			grid[i][j] = state.none
+			g.append(state.none)
+			c.append(" ")
+		grid.append(g)
+		chars.append(c)
 
 def write(string, x, y):
 	global chars
@@ -136,10 +163,11 @@ def draw():
 		raytrace(centerx, centery, ends[i][0], ends[i][1], i)
 
 	# Draw text
-	if arg_short:
-		write((now.strftime("%A")[:3].upper()) + (now.strftime(" %B")[:4].upper()) + now.strftime(" %d %Y"), 3, HEIGHT - 2)
-	else:
-		write(now.strftime("%A, %B %d %Y"), 3, HEIGHT - 2)
+	if not args.notext:
+		if arg_short:
+			write((now.strftime("%A")[:3].upper()) + (now.strftime(" %B")[:4].upper()) + now.strftime(" %d %Y"), 3, HEIGHT - 2)
+		else:
+			write(now.strftime("%A, %B %d %Y"), 3, HEIGHT - 2)
 
 	# Draw out the entire grid
 	for i in range(HEIGHT):
@@ -147,11 +175,11 @@ def draw():
 			color = "232"
 			
 			if grid[i][j] == state.second:
-				color = "255" # White
+				color = arg_color[state.second]
 			elif grid[i][j] == state.minute:
-				color = "246" # Dark Gray
+				color = arg_color[state.minute]
 			elif grid[i][j] == state.hour:
-				color = "239" # Dark Dark Gray
+				color = arg_color[state.hour]
 			elif grid[i][j] == state.none:
 				pass
 
@@ -177,7 +205,7 @@ if __name__ == "__main__":
 			clear()
 			draw()
 			backspace()
-			time.sleep(1)
+			time.sleep(0.25)
 		except KeyboardInterrupt:
 			clear()
 			draw()
