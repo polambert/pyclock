@@ -5,9 +5,20 @@ import calendar
 import time
 from math import pi, sin, cos, floor
 import sys
+import argparse
 
-WIDTH = 30
-HEIGHT = 15
+# Parse Arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("-s", action="store", dest="size", default="20x10")
+parser.add_argument("-short", action="store_true", dest="shorten_time_text")
+
+args = parser.parse_args()
+
+arg_size = args.size
+arg_short = args.shorten_time_text
+
+WIDTH = int(arg_size.split("x")[0])
+HEIGHT = int(arg_size.split("x")[1])
 
 class state:
 	second = 0
@@ -112,15 +123,23 @@ def draw():
 
 	for i in range(len(angles)):
 		ends.append([])
-		ends[i].append(floor(cos(angles[i]) * centerx) + centerx)
-		ends[i].append(floor(sin(angles[i]) * centery) + centery)
+		if i <= 1:
+			ends[i].append(floor(cos(angles[i]) * centerx) + centerx)
+			ends[i].append(floor(sin(angles[i]) * centery) + centery)
+		else:
+			# Hour hand, shorter
+			ends[i].append(floor(cos(angles[i]) * (centerx * 0.75)) + centerx)
+			ends[i].append(floor(sin(angles[i]) * (centery * 0.75)) + centery)
 		
 	# Draw all of the dots in between
 	for i in range(len(ends)):
 		raytrace(centerx, centery, ends[i][0], ends[i][1], i)
 
 	# Draw text
-	write(now.strftime("%A, %B %d %Y"), 3, 11)
+	if arg_short:
+		write((now.strftime("%A")[:3].upper()) + (now.strftime(" %B")[:4].upper()) + now.strftime(" %d %Y"), 3, HEIGHT - 2)
+	else:
+		write(now.strftime("%A, %B %d %Y"), 3, HEIGHT - 2)
 
 	# Draw out the entire grid
 	for i in range(HEIGHT):
