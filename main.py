@@ -1,28 +1,41 @@
 #!/usr/bin/env python3
 
 import datetime
+import calendar
 import time
 from math import pi, sin, cos, floor
+import sys
 
-WIDTH = 60
-HEIGHT = 30
+WIDTH = 30
+HEIGHT = 15
 
-# Fill the grid
+class state:
+	second = 0
+	minute = 1
+	hour = 2
+	none = 3
+
+# Fill the grid (and chars)
 grid = []
+chars = []
 for i in range(HEIGHT):
-	l = []
+	g = []
+	c = []
 	for j in range(WIDTH):
-		l.append(False)
-	grid.append(l)
+		g.append(state.none)
+		c.append(" ")
+	grid.append(g)
+	chars.append(c)
 
 def clamp(a, b, val):
 	return max(a, min(val, b))
 
-def dot(x, y):
+def dot(x, y, t=state.none):
 	global grid
-	grid[clamp(0, HEIGHT-1, y)][clamp(0, WIDTH-1, x)] = True
+	
+	grid[clamp(0, HEIGHT-1, y)][clamp(0, WIDTH-1, x)] = t
 
-def raytrace(x0, y0, x1, y1):
+def raytrace(x0, y0, x1, y1, i):
 	dx = abs(x1 - x0)
 	dy = abs(y1 - y0)
 	x = x0
@@ -43,22 +56,51 @@ def raytrace(x0, y0, x1, y1):
 		else:
 			y += y_inc
 			error += dx
-		dot(x, y)
+		dot(x, y, i)
 
 def clear():
 	global grid
 	for i in range(HEIGHT):
 		for j in range(WIDTH):
-			grid[i][j] = False
+			grid[i][j] = state.none
+
+def write(string, x, y):
+	global chars
+
+	for i in range(len(string)):
+		chars[y][clamp(0, WIDTH-1, x + i)] = string[i]
 
 def draw():
-	second = datetime.datetime.now().second
-	if second < 15:
-		delta = second - 15
-		second = 60 + delta
-	else:
-		second -= 15
-	angle = (second / 60) * (2 * pi)
+	now = datetime.datetime.now()
+	times = []
+
+	times.append(now.second)
+	times.append(now.minute)
+	times.append(now.hour % 12)
+
+	for i in range(len(times)):
+		if i <= 1:
+			top = 60
+		else:
+			top = 12
+
+		top /= 4
+
+		if times[i] < top:
+			delta = times[i] - top
+			times[i] = (top * 4) + delta
+		else:
+			times[i] -= top
+
+	angles = []
+	
+	for i in range(len(times)):
+		if i <= 1:
+			top = 60
+		else:
+			top = 12
+		angle = (times[i] / top) * (2 * pi)
+		angles.append(angle)
 
 	# Draw the dot in the center of the screen
 	centery = HEIGHT // 2
@@ -66,19 +108,43 @@ def draw():
 	dot(centerx, centery)
 
 	# Draw the dot at the end of the clock hand
-	endx = floor(cos(angle) * centerx) + centerx
-	endy = floor(sin(angle) * centery) + centery
-	dot(endx, endy)
+	ends = [] # 2d array
 
+	for i in range(len(angles)):
+		ends.append([])
+		ends[i].append(floor(cos(angles[i]) * centerx) + centerx)
+		ends[i].append(floor(sin(angles[i]) * centery) + centery)
+		
 	# Draw all of the dots in between
-	raytrace(centerx, centery, endx, endy)
+	for i in range(len(ends)):
+		raytrace(centerx, centery, ends[i][0], ends[i][1], i)
+
+	# Draw text
+	write(now.strftime("%A, %B %d %Y"), 3, 11)
 
 	# Draw out the entire grid
 	for i in range(HEIGHT):
 		for j in range(WIDTH):
-			if grid[i][j]:
-				print("\033[7m", end="")
-			print(" ", end="")
+			color = "232"
+			
+			if grid[i][j] == state.second:
+				color = "255" # White
+			elif grid[i][j] == state.minute:
+				color = "246" # Dark Gray
+			elif grid[i][j] == state.hour:
+				color = "239" # Dark Dark Gray
+			elif grid[i][j] == state.none:
+				pass
+
+			fg = "255"
+			bg = color
+
+			if bg != "232" or chars[i][j] != " ":
+				if bg != "232":
+					print(u"\u001b[48;5;" + bg + "m", end="")
+				print(u"\u001b[38;5;" + fg + "m" + chars[i][j], end="")
+			else:
+				print(" ", end="")
 			print("\033[0m", end="")
 		print()
 
@@ -88,8 +154,13 @@ def backspace():
 
 if __name__ == "__main__":
 	while True:
-		clear()
-		draw()
-		backspace()
-		time.sleep(1)
+		try:
+			clear()
+			draw()
+			backspace()
+			time.sleep(1)
+		except KeyboardInterrupt:
+			clear()
+			draw()
+			sys.exit()
 
