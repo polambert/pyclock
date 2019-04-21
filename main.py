@@ -24,7 +24,7 @@ arg_color = args.colors.split(":")
 if arg_size == "full":
 	rows, columns = os.popen("stty size", "r").read().split()
 	WIDTH = int(columns)
-	HEIGHT = int(rows)
+	HEIGHT = int(rows) - 1
 else:
 	WIDTH = int(arg_size.split("x")[0])
 	HEIGHT = int(arg_size.split("x")[1])
@@ -88,7 +88,7 @@ def clear():
 	if arg_size == "full":
 		rows, columns = os.popen("stty size", "r").read().split()
 		WIDTH = int(columns)
-		HEIGHT = int(rows)
+		HEIGHT = int(rows) - 1
 
 	grid = []
 	chars = []
